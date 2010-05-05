@@ -417,54 +417,6 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	}
 };
 
-// TODO Builderクラスは、XHR, DOMともに使わないので消す
-/**
- * Builder
- */
-function Builder() {
-
-};
-
-/**
- * <p>
- * Build a valid XMLHttpRequest object
- * </p>
- * 
- * @return XMLHttpRequest object.
- */
-Builder.buildXHR = function() {
-	return (typeof XMLHttpRequest != "undefined") ? new XMLHttpRequest()
-			: new ActiveXObject("Microsoft.XMLHTTP");
-};
-
-/**
- * <p>
- * Build a valid XML document from string markup.
- * </p>
- * 
- * @param xml
- *            Document markup.
- * @return XMLDocument object.
- */
-Builder.buildDOM = function(xml) {
-	if (typeof DOMParser != "undefined") {
-		var w3c_parser = new DOMParser();
-		return w3c_parser.parseFromString(xml, "text/xml");
-	} else {
-		var names = [ "Microsoft.XMLDOM", "MSXML2.DOMDocument",
-				"MSXML.DOMDocument" ];
-		for ( var i = 0; i < names.length; i++) {
-			try {
-				var atx_parser = new ActiveXObject(names[i]);
-				atx_parser.loadXML(xml);
-				return atx_parser;
-			} catch (e) {/* ignore */
-			}
-		}
-	}
-	return null;
-};
-
 /**
  * Date
  */
