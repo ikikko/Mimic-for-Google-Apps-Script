@@ -1,15 +1,24 @@
 /*
- *	Mimic (XML-RPC Client for JavaScript) v2.0.1
- *	Copyright (C) 2005-2009 Carlos Eduardo Goncalves (cadu.goncalves@gmail.com)
+ * 変更点
+ * - Basic認証対応
+ * - xhr -> UrlFetch(in GAS)
+ * - DOM -> Xml(in GAS)
+ */
+
+/*
+ * Mimic (XML-RPC Client for JavaScript) v2.0.1 Copyright (C) 2005-2009 Carlos
+ * Eduardo Goncalves (cadu.goncalves@gmail.com)
  *
- *	Mimic is dual licensed under the MIT (http://opensource.org/licenses/mit-license.php)
- * 	and GPLv3 (http://opensource.org/licenses/gpl-3.0.html) licenses.
+ * Mimic is dual licensed under the MIT
+ * (http://opensource.org/licenses/mit-license.php) and GPLv3
+ * (http://opensource.org/licenses/gpl-3.0.html) licenses.
  */
 
 /**
  * XmlRpc
  */
 function XmlRpc() {
+
 };
 
 /**
@@ -215,10 +224,14 @@ XmlRpcRequest.prototype.send = function() {
 				.marshal(this.params[i]));
 	var xml_call = XmlRpc.REQUEST.replace("${METHOD}", this.methodName);
 	xml_call = XmlRpc.PROLOG + xml_call.replace("${DATA}", xml_params);
-	var xhr = Builder.buildXHR();
-	xhr.open("POST", this.serviceUrl, false);
-	xhr.send(Builder.buildDOM(xml_call));
-	return new XmlRpcResponse(xhr.responseXML);
+	var response = UrlFetchApp.fetch(this.serviceUrl, {
+		headers : { // TODO ユーザ名・パスワードを可変にする
+			Authorization : "Basic " + Utilities.base64Encode("demo:demo")
+		},
+		method : "post",
+		payload : xml_call
+	});
+	return new XmlRpcResponse(Xml.parse(response.getContentText()));
 };
 
 /**
@@ -301,8 +314,10 @@ XmlRpcResponse.prototype.parseXML = function() {
 	this.currentIsName = false;
 	this.propertyName = "";
 	this.params = [];
-	for ( var i = 0; i < this.xmlData.childNodes.length; i++)
-		this.unmarshal(this.xmlData.childNodes[i], 0);
+	var top = this.xmlData.getDocument().getElement();
+	for ( var i = 0; i < top.getElements().length; i++)
+		this.unmarshal(top.getElements()[i], 0);
+
 	return this.params[0];
 };
 
@@ -317,9 +332,14 @@ XmlRpcResponse.prototype.parseXML = function() {
  *            Current node' parent node.
  */
 XmlRpcResponse.prototype.unmarshal = function(node, parent) {
-	if (node.nodeType == 1) {
+
+	Logger.log("tag : " + node.getName().getLocalName() + " : "
+			+ node.getElements().length); // TODO log
+
+	if (node.getElements() != 0) {
+
 		var obj = null;
-		var tag = node.tagName.toLowerCase();
+		var tag = node.getName().getLocalName().toLowerCase();
 		switch (tag) {
 		case "fault":
 			this.faultValue = true;
@@ -348,13 +368,13 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 				var parent = this.params.length - 1;
 			}
 		}
-		for ( var i = 0; i < node.childNodes.length; i++) {
-			this.unmarshal(node.childNodes[i], parent);
+		for ( var i = 0; i < node.getElements().length; i++) {
+			this.unmarshal(node.getElements()[i], parent);
 		}
-	}
-	if ((node.nodeType == 3) && (/[^\t\n\r ]/.test(node.nodeValue))) {
+	} else if (/[^\t\n\r ]/.test(node.getText())) {
+		Logger.log("text : " + node.getText()); // TODO log
 		if (this.currentIsName == true) {
-			this.propertyName = node.nodeValue;
+			this.propertyName = node.getText();
 			this.currentIsName = false;
 		} else {
 			switch (XmlRpc.getDataTag(this.params[this.params.length - 1])) {
@@ -564,4 +584,4 @@ Base64.prototype.decode = function() {
 		this.bytes = _result.join("");
 	}
 	return this.bytes;
-};
+};​
