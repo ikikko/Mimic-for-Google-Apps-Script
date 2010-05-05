@@ -1,8 +1,10 @@
 /*
  * 変更点
  * - Basic認証対応
- * - xhr -> UrlFetch(in GAS)
- * - DOM -> Xml(in GAS)
+ * - 値に型指定が無い場合、Stringに変換する処理追加（多分入ってなかった）
+ * - XHR -> UrlFetch (in GAS)
+ * - DOM -> Xml (in GAS)
+ * - Base64 -> Base64 (in GAS)
  */
 
 /*
@@ -134,7 +136,8 @@ XmlRpc.getDataTag = function(data) {
  *            A XMLRPC tag name.
  * @return A JavaScript object.
  */
-XmlRpc.getTagData = function(tag) {
+XmlRpc.getTagData = function(node) {
+	var tag = node.getName().getLocalName().toLowerCase();
 	var data = null;
 	switch (tag) {
 	case "struct":
@@ -160,6 +163,11 @@ XmlRpc.getTagData = function(tag) {
 	case "base64":
 		data = new Base64();
 		break;
+	case "value":
+		if (node.getText() != "") {
+			data = new String();
+			break;
+		}
 	}
 	return data;
 };
@@ -333,68 +341,65 @@ XmlRpcResponse.prototype.parseXML = function() {
  */
 XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 
-	Logger.log("tag : " + node.getName().getLocalName() + " : "
-			+ node.getElements().length); // TODO log
+	var tag = node.getName().getLocalName().toLowerCase();
 
-	if (node.getElements() != 0) {
+	Logger.log("parent : " + parent + ", tag : " + tag); // TODO log
 
-		var obj = null;
-		var tag = node.getName().getLocalName().toLowerCase();
-		switch (tag) {
-		case "fault":
-			this.faultValue = true;
-			break;
-		case "name":
-			this.currentIsName = true;
-			break;
-		default:
-			obj = XmlRpc.getTagData(tag);
-			break;
-		}
-		if (obj != null) {
-			this.params.push(obj);
-			if (tag == "struct" || tag == "array") {
-				if (this.params.length > 1) {
-					switch (XmlRpc.getDataTag(this.params[parent])) {
-					case "struct":
-						this.params[parent][this.propertyName] = this.params[this.params.length - 1];
-						break;
-					case "array":
-						this.params[parent]
-								.push(this.params[this.params.length - 1]);
-						break;
-					}
+	var obj = null;
+	switch (tag) {
+	case "fault":
+		this.faultValue = true;
+		break;
+	default:
+		obj = XmlRpc.getTagData(node);
+		break;
+	}
+
+	if (obj != null) {
+		this.params.push(obj);
+		if (tag == "struct" || tag == "array") {
+			if (this.params.length > 1) {
+				switch (XmlRpc.getDataTag(this.params[parent])) {
+				case "struct":
+					this.params[parent][this.propertyName] = this.params[this.params.length - 1];
+					break;
+				case "array":
+					this.params[parent]
+							.push(this.params[this.params.length - 1]);
+					break;
 				}
-				var parent = this.params.length - 1;
 			}
+			var parent = this.params.length;
 		}
-		for ( var i = 0; i < node.getElements().length; i++) {
-			this.unmarshal(node.getElements()[i], parent);
-		}
-	} else if (/[^\t\n\r ]/.test(node.getText())) {
-		Logger.log("text : " + node.getText()); // TODO log
-		if (this.currentIsName == true) {
+	}
+
+	for ( var i = 0; i < node.getElements().length; i++) {
+		this.unmarshal(node.getElements()[i], parent);
+	}
+
+	if (/[^\t\n\r ]/.test(node.getText())) {
+		if (tag == "name") {
+			Logger.log("text : " + node.getText()); // TODO log
 			this.propertyName = node.getText();
-			this.currentIsName = false;
 		} else {
 			switch (XmlRpc.getDataTag(this.params[this.params.length - 1])) {
 			case "dateTime.iso8601":
-				this.params[this.params.length - 1] = Date
-						.fromIso8601(node.nodeValue);
+				this.params[this.params.length - 1] = Date.fromIso8601(node
+						.getText());
 				break;
 			case "boolean":
-				this.params[this.params.length - 1] = (node.nodeValue == "1") ? true
+				this.params[this.params.length - 1] = (node.getText() == "1") ? true
 						: false;
 				break;
 			case "int":
 			case "double":
-				this.params[this.params.length - 1] = new Number(node.nodeValue);
+				this.params[this.params.length - 1] = new Number(node.getText());
 				break;
 			case "string":
-				this.params[this.params.length - 1] = new String(node.nodeValue);
+				this.params[this.params.length - 1] = new String(node.getText());
 				break;
 			case "base64":
-				this.params[this.params.length - 1] = new Base64(node.nodeValue);
+				this.params[this.params.length - 1] = new Base64(node.getText());
 				break;
 			}
 			if (this.params.length > 1) {
@@ -412,6 +417,7 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	}
 };
 
+// TODO Builderクラスは、XHR, DOMともに使わないので消す
 /**
  * Builder
  */
@@ -503,6 +509,7 @@ Date.fromIso8601 = function(value) {
 	return new Date(year, month - 1, day, hour, minute, sec, 0);
 };
 
+// TODO Base64はGASにUtilitiesが用意されているので、そちらを使用
 /**
  * Base64
  */
