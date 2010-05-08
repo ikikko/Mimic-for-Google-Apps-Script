@@ -1,7 +1,7 @@
 /*
  * 変更点
  * - Basic認証対応
- * - 値に型指定が無い場合、Stringに変換する処理追加（多分入ってなかった）
+ * - 値に型指定が無い場合、Stringとみなす処理追加（多分入ってなかった）
  * - XHR -> UrlFetch (in GAS)
  * - DOM -> Xml (in GAS)
  * - Base64 -> Base64 (in GAS)
@@ -324,7 +324,7 @@ XmlRpcResponse.prototype.parseXML = function() {
 	this.params = [];
 	var top = this.xmlData.getDocument().getElement();
 	for ( var i = 0; i < top.getElements().length; i++)
-		this.unmarshal(top.getElements()[i], 0);
+		this.unmarshal(top.getElements()[i], -1);
 
 	return this.params[0];
 };
@@ -343,7 +343,7 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 
 	var tag = node.getName().getLocalName().toLowerCase();
 
-	Logger.log("parent : " + parent + ", tag : " + tag); // TODO log
+	// Logger.log("parent : " + parent + ", tag : " + tag); // TODO log
 
 	var obj = null;
 	switch (tag) {
@@ -358,18 +358,7 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	if (obj != null) {
 		this.params.push(obj);
 		if (tag == "struct" || tag == "array") {
-			if (this.params.length > 1) {
-				switch (XmlRpc.getDataTag(this.params[parent])) {
-				case "struct":
-					this.params[parent][this.propertyName] = this.params[this.params.length - 1];
-					break;
-				case "array":
-					this.params[parent]
-							.push(this.params[this.params.length - 1]);
-					break;
-				}
-			}
-			var parent = this.params.length;
+			parent++;
 		}
 	}
 
@@ -379,7 +368,7 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 
 	if (/[^\t\n\r ]/.test(node.getText())) {
 		if (tag == "name") {
-			Logger.log("text : " + node.getText()); // TODO log
+			// Logger.log("text : " + node.getText()); // TODO log
 			this.propertyName = node.getText();
 		} else {
 			switch (XmlRpc.getDataTag(this.params[this.params.length - 1])) {
@@ -402,16 +391,16 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 				this.params[this.params.length - 1] = new Base64(node.getText());
 				break;
 			}
-			if (this.params.length > 1) {
-				switch (XmlRpc.getDataTag(this.params[parent])) {
-				case "struct":
-					this.params[parent][this.propertyName] = this.params[this.params.length - 1];
-					break;
-				case "array":
-					this.params[parent]
-							.push(this.params[this.params.length - 1]);
-					break;
-				}
+
+			switch (XmlRpc.getDataTag(this.params[parent])) {
+			case "struct":
+				this.params[parent][this.propertyName] = this.params.pop();
+				// Logger.log("key : " + [this.propertyName] + ", value : " +
+				// this.params[parent][this.propertyName]); // TODO log
+				break;
+			case "array":
+				this.params[parent].push(this.params.pop());
+				break;
 			}
 		}
 	}
