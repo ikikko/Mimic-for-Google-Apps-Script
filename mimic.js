@@ -20,7 +20,6 @@
  * XmlRpc
  */
 function XmlRpc() {
-
 };
 
 /**
@@ -319,14 +318,13 @@ XmlRpcResponse.prototype.isFault = function() {
  */
 XmlRpcResponse.prototype.parseXML = function() {
 	this.faultValue = undefined;
-	this.currentIsName = false;
 	this.propertyName = "";
 	this.params = [];
 	var top = this.xmlData.getDocument().getElement();
 	for ( var i = 0; i < top.getElements().length; i++)
-		this.unmarshal(top.getElements()[i], -1);
+		this.params = this.unmarshal(top.getElements()[i], this.params);
 
-	return this.params[0];
+	return this.params;
 };
 
 /**
@@ -343,67 +341,85 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 
 	var tag = node.getName().getLocalName().toLowerCase();
 
-	// Logger.log("parent : " + parent + ", tag : " + tag); // TODO log
-
-	var obj = null;
+	var obj = XmlRpc.getTagData(node);
 	switch (tag) {
 	case "fault":
 		this.faultValue = true;
 		break;
-	default:
-		obj = XmlRpc.getTagData(node);
-		break;
-	}
 
-	if (obj != null) {
-		this.params.push(obj);
-		if (tag == "struct" || tag == "array") {
-			parent++;
+	case "struct":
+	case "array":
+		var value = obj;
+		for ( var i = 0; i < node.getElements().length; i++) {
+			value = this.unmarshal(node.getElements()[i], value);
 		}
-	}
 
-	for ( var i = 0; i < node.getElements().length; i++) {
-		this.unmarshal(node.getElements()[i], parent);
+		switch (XmlRpc.getDataTag(parent)) {
+		case "struct":
+			parent[this.propertyName] = value;
+			break;
+		case "array":
+			parent.push(value);
+			break;
+		case "dateTime.iso8601":
+		case "int":
+		case "double":
+		case "string":
+		case "base64":
+			parent = value;
+			break;
+		}
+		return parent;
 	}
 
 	if (/[^\t\n\r ]/.test(node.getText())) {
-		if (tag == "name") {
-			// Logger.log("text : " + node.getText()); // TODO log
+		if (tag == "name") { // TODO 'name'と'value'タグが入れ替わったら動作しない
 			this.propertyName = node.getText();
 		} else {
-			switch (XmlRpc.getDataTag(this.params[this.params.length - 1])) {
+			var value;
+
+			switch (XmlRpc.getDataTag(obj)) {
 			case "dateTime.iso8601":
-				this.params[this.params.length - 1] = Date.fromIso8601(node
-						.getText());
+				value = Date.fromIso8601(node.getText());
 				break;
 			case "boolean":
-				this.params[this.params.length - 1] = (node.getText() == "1") ? true
-						: false;
+				value = (node.getText() == "1") ? true : false;
 				break;
 			case "int":
 			case "double":
-				this.params[this.params.length - 1] = new Number(node.getText());
+				value = new Number(node.getText());
 				break;
 			case "string":
-				this.params[this.params.length - 1] = new String(node.getText());
+				value = new String(node.getText());
 				break;
 			case "base64":
-				this.params[this.params.length - 1] = new Base64(node.getText());
+				value = new Base64(node.getText());
 				break;
 			}
 
-			switch (XmlRpc.getDataTag(this.params[parent])) {
+			switch (XmlRpc.getDataTag(parent)) {
 			case "struct":
-				this.params[parent][this.propertyName] = this.params.pop();
-				// Logger.log("key : " + [this.propertyName] + ", value : " +
-				// this.params[parent][this.propertyName]); // TODO log
+				parent[this.propertyName] = value;
 				break;
 			case "array":
-				this.params[parent].push(this.params.pop());
+				parent.push(value);
+				break;
+			case "dateTime.iso8601":
+			case "int":
+			case "double":
+			case "string":
+			case "base64":
+				parent = value;
 				break;
 			}
 		}
+	} else {
+		for ( var i = 0; i < node.getElements().length; i++) {
+			parent = this.unmarshal(node.getElements()[i], parent);
+		}
 	}
+
+	return parent;
 };
 
 /**
