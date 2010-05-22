@@ -347,7 +347,7 @@ XmlRpcResponse.prototype.parseXML = function() {
 	for ( var i = 0; i < top.getElements().length; i++)
 		this.params = this.unmarshal(top.getElements()[i], this.params);
 
-	return this.params;
+	return this.params[0];
 };
 
 /**
