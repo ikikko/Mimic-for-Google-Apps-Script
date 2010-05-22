@@ -1,10 +1,11 @@
 /*
- * 変更点
- * - Basic認証対応
- * - 値に型指定が無い場合、Stringとみなす処理追加（多分入ってなかった）
- * - XHR -> UrlFetch (in GAS)
- * - DOM -> Xml (in GAS)
- * - Base64 -> Base64 (in GAS)
+ * Change Log
+ * - Support (basic) authentication
+ * - Add handling response value as string when value type is not defined
+ * - Replace with class supported Google Apps Script
+ * -- XmlHttpRequest -> UrlFetch
+ * -- DOM -> Xml
+ * -- Base64 -> Utilities.base64Encode/base64Decode
  */
 
 /*
@@ -395,7 +396,7 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	}
 
 	if (/[^\t\n\r ]/.test(node.getText())) {
-		if (tag == "name") { // TODO 'name'と'value'タグが入れ替わったら動作しない
+		if (tag == "name") { // TODO handle changing order 'name' and 'value'
 			this.propertyName = node.getText();
 		} else {
 			var value;
