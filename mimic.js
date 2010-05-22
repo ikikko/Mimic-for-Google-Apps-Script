@@ -183,6 +183,7 @@ function XmlRpcRequest(url, method) {
 	this.serviceUrl = url;
 	this.methodName = method;
 	this.params = [];
+	this.authentication = null;
 };
 
 /**
@@ -209,12 +210,27 @@ XmlRpcRequest.prototype.addParam = function(data) {
  * <p>
  * Clear all request parameters.
  * </p>
- * 
- * @param data
- *            New parameter value.
  */
 XmlRpcRequest.prototype.clearParams = function() {
 	this.params.splice(0, this.params.length);
+};
+
+/**
+ * <p>
+ * Set authentication user and password.
+ * </p>
+ * 
+ * @param user
+ *            User for Authentication.
+ * @param password
+ *            Password for Authentication.
+ * 
+ */
+XmlRpcRequest.prototype.setAuthentication = function(user, password) {
+	this.authentication = {
+		"user" : user,
+		"password" : password
+	};
 };
 
 /**
@@ -231,13 +247,19 @@ XmlRpcRequest.prototype.send = function() {
 				.marshal(this.params[i]));
 	var xml_call = XmlRpc.REQUEST.replace("${METHOD}", this.methodName);
 	xml_call = XmlRpc.PROLOG + xml_call.replace("${DATA}", xml_params);
-	var response = UrlFetchApp.fetch(this.serviceUrl, {
-		headers : { // TODO ユーザ名・パスワードを可変にする
-			Authorization : "Basic " + new Base64("demo:demo").encode()
-		},
+	var optAdvancedArgs = {
 		method : "post",
 		payload : xml_call
-	});
+	};
+	if (this.authentication != null) {
+		var authHeader = {
+			Authorization : "Basic "
+					+ new Base64(this.authentication["user"] + ":"
+							+ this.authentication["password"]).encode()
+		};
+		optAdvancedArgs["headers"] = authHeader;
+	}
+	var response = UrlFetchApp.fetch(this.serviceUrl, optAdvancedArgs);
 	return new XmlRpcResponse(Xml.parse(response.getContentText()));
 };
 
