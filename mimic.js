@@ -233,7 +233,7 @@ XmlRpcRequest.prototype.send = function() {
 	xml_call = XmlRpc.PROLOG + xml_call.replace("${DATA}", xml_params);
 	var response = UrlFetchApp.fetch(this.serviceUrl, {
 		headers : { // TODO ユーザ名・パスワードを可変にする
-			Authorization : "Basic " + Utilities.base64Encode("demo:demo")
+			Authorization : "Basic " + new Base64("demo:demo").encode()
 		},
 		method : "post",
 		payload : xml_call
@@ -466,7 +466,6 @@ Date.fromIso8601 = function(value) {
 	return new Date(year, month - 1, day, hour, minute, sec, 0);
 };
 
-// TODO Base64はGASにUtilitiesが用意されているので、そちらを使用
 /**
  * Base64
  */
@@ -476,44 +475,13 @@ function Base64(value) {
 
 /**
  * <p>
- * Base64 characters map.
- * </p>
- */
-Base64.CHAR_MAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-/**
- * <p>
  * Encode the object bytes using base64 algorithm.
  * </p>
  * 
  * @return Encoded string.
  */
 Base64.prototype.encode = function() {
-	if (typeof btoa == "function")
-		this.bytes = btoa(this.bytes);
-	else {
-		var _byte = new Array(), _char = new Array(), _result = new Array();
-		var j = 0;
-		for ( var i = 0; i < this.bytes.length; i += 3) {
-			_byte[0] = this.bytes.charCodeAt(i);
-			_byte[1] = this.bytes.charCodeAt(i + 1);
-			_byte[2] = this.bytes.charCodeAt(i + 2);
-			_char[0] = _byte[0] >> 2;
-			_char[1] = ((_byte[0] & 3) << 4) | (_byte[1] >> 4);
-			_char[2] = ((_byte[1] & 15) << 2) | (_byte[2] >> 6);
-			_char[3] = _byte[2] & 63;
-			if (isNaN(_byte[1]))
-				_char[2] = _char[3] = 64;
-			else if (isNaN(_byte[2]))
-				_char[3] = 64;
-			_result[j++] = Base64.CHAR_MAP.charAt(_char[0])
-					+ Base64.CHAR_MAP.charAt(_char[1])
-					+ Base64.CHAR_MAP.charAt(_char[2])
-					+ Base64.CHAR_MAP.charAt(_char[3]);
-		}
-		this.bytes = _result.join("");
-	}
-	return this.bytes;
+	return Utilities.base64Encode(this.bytes);
 };
 
 /**
@@ -524,28 +492,5 @@ Base64.prototype.encode = function() {
  * @return Decoded string.
  */
 Base64.prototype.decode = function() {
-	if (typeof atob == "function")
-		this.bytes = atob(this.bytes);
-	else {
-		var _byte = new Array(), _char = new Array(), _result = new Array();
-		var j = 0;
-		while ((this.bytes.length % 4) != 0)
-			this.bytes += "=";
-		for ( var i = 0; i < this.bytes.length; i += 4) {
-			_char[0] = Base64.CHAR_MAP.indexOf(this.bytes.charAt(i));
-			_char[1] = Base64.CHAR_MAP.indexOf(this.bytes.charAt(i + 1));
-			_char[2] = Base64.CHAR_MAP.indexOf(this.bytes.charAt(i + 2));
-			_char[3] = Base64.CHAR_MAP.indexOf(this.bytes.charAt(i + 3));
-			_byte[0] = (_char[0] << 2) | (_char[1] >> 4);
-			_byte[1] = ((_char[1] & 15) << 4) | (_char[2] >> 2);
-			_byte[2] = ((_char[2] & 3) << 6) | _char[3];
-			_result[j++] = String.fromCharCode(_byte[0]);
-			if (_char[2] != 64)
-				_result[j++] = String.fromCharCode(_byte[1]);
-			if (_char[3] != 64)
-				_result[j++] = String.fromCharCode(_byte[2]);
-		}
-		this.bytes = _result.join("");
-	}
-	return this.bytes;
+	return Utilities.base64Decode(this.bytes);
 };​
