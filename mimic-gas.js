@@ -133,47 +133,34 @@ XmlRpc.getDataTag = function(data) {
 
 /**
  * <p>
- * Get JavaScript object type represented by XMLRPC protocol tag.
+ * Get JavaScript object type represented by XMLRPC protocol node.
  * <p>
  * 
- * @param tag
- *            A XMLRPC tag name.
+ * @param node
+ *            A XMLRPC node.
  * @return A JavaScript object.
  */
-XmlRpc.getTagData = function(node) {
+XmlRpc.getNodeData = function(node) {
 	var tag = node.getName().getLocalName().toLowerCase();
-	var data = null;
+
 	switch (tag) {
-	case "struct":
-		data = new Object();
-		break;
-	case "array":
-		data = new Array();
-		break;
-	case "datetime.iso8601":
-		data = new Date();
-		break;
+	case "dateTime.iso8601":
+		return Date.fromIso8601(node.getText());
 	case "boolean":
-		data = new Boolean();
-		break;
+		return (node.getText() == "1") ? true : false;
 	case "int":
 	case "i4":
 	case "double":
-		data = new Number();
-		break;
+		return new Number(node.getText());
 	case "string":
-		data = new String();
-		break;
+		return new String(node.getText());
 	case "base64":
-		data = new Base64();
-		break;
+		return new Base64(node.getText());
 	case "value":
 		if (node.getText() != "") {
-			data = new String();
-			break;
+			return new String(node.getText());
 		}
 	}
-	return data;
 };
 
 /**
@@ -365,88 +352,63 @@ XmlRpcResponse.prototype.parseXML = function() {
  *            Current node' parent node.
  */
 XmlRpcResponse.prototype.unmarshal = function(node, parent) {
-
 	var tag = node.getName().getLocalName().toLowerCase();
 
-	var obj = XmlRpc.getTagData(node);
-	switch (tag) {
-	case "fault":
+	if (tag == "fault") {
 		this.faultValue = true;
-		break;
-
-	case "struct":
-	case "array":
-		var value = obj;
-		for ( var i = 0; i < node.getElements().length; i++) {
-			value = this.unmarshal(node.getElements()[i], value);
-		}
-
-		switch (XmlRpc.getDataTag(parent)) {
-		case "struct":
-			parent[this.propertyName] = value;
-			break;
-		case "array":
-			parent.push(value);
-			break;
-		case "dateTime.iso8601":
-		case "int":
-		case "double":
-		case "string":
-		case "base64":
-			parent = value;
-			break;
-		}
-		return parent;
 	}
 
-	if (/[^\t\n\r ]/.test(node.getText())) {
+	if (tag == "struct" || tag == "array") {
+		var children = (tag == "struct" ? new Object() : new Array());
+		for ( var i = 0; i < node.getElements().length; i++) {
+			children = this.unmarshal(node.getElements()[i], children);
+		}
+		this.addValueToParent(children, parent);
+
+	} else if (/[^\t\n\r ]/.test(node.getText())) {
 		if (tag == "name") { // TODO handle changing order 'name' and 'value'
 			this.propertyName = node.getText();
 		} else {
-			var value;
-
-			switch (XmlRpc.getDataTag(obj)) {
-			case "dateTime.iso8601":
-				value = Date.fromIso8601(node.getText());
-				break;
-			case "boolean":
-				value = (node.getText() == "1") ? true : false;
-				break;
-			case "int":
-			case "double":
-				value = new Number(node.getText());
-				break;
-			case "string":
-				value = new String(node.getText());
-				break;
-			case "base64":
-				value = new Base64(node.getText());
-				break;
-			}
-
-			switch (XmlRpc.getDataTag(parent)) {
-			case "struct":
-				parent[this.propertyName] = value;
-				break;
-			case "array":
-				parent.push(value);
-				break;
-			case "dateTime.iso8601":
-			case "int":
-			case "double":
-			case "string":
-			case "base64":
-				parent = value;
-				break;
-			}
+			this.addValueToParent(XmlRpc.getNodeData(node), parent);
 		}
+
 	} else {
+		var children = parent;
 		for ( var i = 0; i < node.getElements().length; i++) {
-			parent = this.unmarshal(node.getElements()[i], parent);
+			children = this.unmarshal(node.getElements()[i], children);
 		}
+		parent = children;
 	}
 
 	return parent;
+};
+
+/**
+ * <p>
+ * Add value to parent object.
+ * </p>
+ * 
+ * @param value
+ *            Value added to parent object.
+ * @param parent
+ *            parent object.
+ */
+XmlRpcResponse.prototype.addValueToParent = function(value, parent) {
+	switch (XmlRpc.getDataTag(parent)) {
+	case "struct":
+		parent[this.propertyName] = value;
+		break;
+	case "array":
+		parent.push(value);
+		break;
+	case "dateTime.iso8601":
+	case "int":
+	case "double":
+	case "string":
+	case "base64":
+		parent = value;
+		break;
+	}
 };
 
 /**
