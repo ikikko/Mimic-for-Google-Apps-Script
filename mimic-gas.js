@@ -1,11 +1,15 @@
 /*
+ * Mimic-GAS is a XML-RPC client for Google Apps Script ( based on mimic.js )
+ *
  * Change Log
  * - Support (basic) authentication
  * - Add handling response value as string when value type is not defined
  * - Replace with class supported Google Apps Script
- * -- XmlHttpRequest -> UrlFetch
- * -- DOM -> Xml
- * -- Base64 -> Utilities.base64Encode/base64Decode
+ * ++ XmlHttpRequest -> UrlFetch
+ * ++ DOM -> Xml
+ * ++ Base64 -> Utilities.base64Encode/base64Decode
+ *
+ * @author ikikko (ikikko+github@gmail.com)
  */
 
 /*
@@ -516,4 +520,4 @@ Base64.prototype.encode = function() {
  */
 Base64.prototype.decode = function() {
 	return Utilities.base64Decode(this.bytes);
-};​
+};
