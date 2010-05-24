@@ -240,6 +240,7 @@ XmlRpcRequest.prototype.send = function() {
 	var xml_call = XmlRpc.REQUEST.replace("${METHOD}", this.methodName);
 	xml_call = XmlRpc.PROLOG + xml_call.replace("${DATA}", xml_params);
 	var optAdvancedArgs = {
+		contentType : "text/xml",
 		method : "post",
 		payload : xml_call
 	};
