@@ -295,6 +295,13 @@ XmlRpcRequest.prototype.marshal = function(data) {
 	case "base64":
 		xml = scalar_type.replace("${DATA}", data.encode());
 		break;
+	case "string":
+		var convertData = "";
+		for ( var i = 0; i < data.length; i++) {
+			convertData += ("&#" + (data.charCodeAt(i)) + ";");
+		}
+		xml = scalar_type.replace("${DATA}", convertData);
+		break;
 	default:
 		xml = scalar_type.replace("${DATA}", data);
 		break;
