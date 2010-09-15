@@ -109,7 +109,7 @@ XmlRpc.getDataTag = function(data) {
 			tag = (Math.round(data) == data) ? "int" : "double";
 			break;
 		case "object":
-			if (data.constructor == Base64)
+			if (data.constructor == Base64_)
 				tag = "base64";
 			else if (data.constructor == String)
 				tag = "string";
@@ -155,7 +155,7 @@ XmlRpc.getNodeData = function(node) {
 	case "string":
 		return new String(node.getText());
 	case "base64":
-		return new Base64(node.getText());
+		return new Base64_(node.getText());
 	case "value":
 		if (node.getText() != "") {
 			return new String(node.getText());
@@ -247,11 +247,13 @@ XmlRpcRequest.prototype.send = function() {
 	if (this.authentication != null) {
 		var authHeader = {
 			Authorization : "Basic "
-					+ new Base64(this.authentication["user"] + ":"
+					+ new Base64_(this.authentication["user"] + ":"
 							+ this.authentication["password"]).encode()
 		};
 		optAdvancedArgs["headers"] = authHeader;
 	}
+	// TODO handle exceptions while processing UrlFetchApp.fetch
+	// http://www.google.com/support/forum/p/apps-script/thread?tid=0d067c1db98aa7f8&hl=en
 	var response = UrlFetchApp.fetch(this.serviceUrl, optAdvancedArgs);
 	return new XmlRpcResponse(Xml.parse(response.getContentText()));
 };
@@ -466,8 +468,8 @@ Date.fromIso8601 = function(value) {
 /**
  * Base64
  */
-function Base64(value) {
-	Base64.prototype.bytes = value;
+function Base64_(value) {
+	Base64_.prototype.bytes = value;
 };
 
 /**
@@ -477,7 +479,7 @@ function Base64(value) {
  * 
  * @return Encoded string.
  */
-Base64.prototype.encode = function() {
+Base64_.prototype.encode = function() {
 	return Utilities.base64Encode(this.bytes);
 };
 
@@ -488,6 +490,6 @@ Base64.prototype.encode = function() {
  * 
  * @return Decoded string.
  */
-Base64.prototype.decode = function() {
+Base64_.prototype.decode = function() {
 	return Utilities.base64Decode(this.bytes);
 };
