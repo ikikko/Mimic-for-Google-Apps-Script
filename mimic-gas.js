@@ -369,10 +369,12 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	}
 
 	if (tag == "struct" || tag == "array") {
+		var parentPropertyName = this.propertyName;
 		var children = (tag == "struct" ? new Object() : new Array());
 		for ( var i = 0; i < node.getElements().length; i++) {
 			children = this.unmarshal(node.getElements()[i], children);
 		}
+		this.propertyName = parentPropertyName;
 		this.addValueToParent(children, parent);
 
 	} else if (/[^\t\n\r ]/.test(node.getText())) {
