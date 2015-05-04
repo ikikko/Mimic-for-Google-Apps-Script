@@ -141,7 +141,7 @@ XmlRpc.getDataTag = function(data) {
  * @return A JavaScript object.
  */
 XmlRpc.getNodeData = function(node) {
-	var tag = node.getName().getLocalName().toLowerCase();
+	var tag = node.getName().toLowerCase();
 
 	switch (tag) {
 	case "dateTime.iso8601":
@@ -255,7 +255,7 @@ XmlRpcRequest.prototype.send = function() {
 	// TODO handle exceptions while processing UrlFetchApp.fetch
 	// http://www.google.com/support/forum/p/apps-script/thread?tid=0d067c1db98aa7f8&hl=en
 	var response = UrlFetchApp.fetch(this.serviceUrl, optAdvancedArgs);
-	return new XmlRpcResponse(Xml.parse(response.getContentText()));
+	return new XmlRpcResponse(XmlService.parse(response.getContentText()));
 };
 
 /**
@@ -344,9 +344,9 @@ XmlRpcResponse.prototype.parseXML = function() {
 	this.faultValue = undefined;
 	this.propertyName = "";
 	this.params = [];
-	var top = this.xmlData.getDocument().getElement();
-	for ( var i = 0; i < top.getElements().length; i++)
-		this.params = this.unmarshal(top.getElements()[i], this.params);
+	var top = this.xmlData.getRootElement();
+	for ( var i = 0; i < top.getChildren().length; i++)
+		this.params = this.unmarshal(top.getChildren()[i], this.params);
 
 	return this.params[0];
 };
@@ -362,7 +362,7 @@ XmlRpcResponse.prototype.parseXML = function() {
  *            Current node' parent node.
  */
 XmlRpcResponse.prototype.unmarshal = function(node, parent) {
-	var tag = node.getName().getLocalName().toLowerCase();
+	var tag = node.getName().toLowerCase();
 
 	if (tag == "fault") {
 		this.faultValue = true;
@@ -371,8 +371,8 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 	if (tag == "struct" || tag == "array") {
 		var parentPropertyName = this.propertyName;
 		var children = (tag == "struct" ? new Object() : new Array());
-		for ( var i = 0; i < node.getElements().length; i++) {
-			children = this.unmarshal(node.getElements()[i], children);
+		for ( var i = 0; i < node.getChildren().length; i++) {
+			children = this.unmarshal(node.getChildren()[i], children);
 		}
 		this.propertyName = parentPropertyName;
 		this.addValueToParent(children, parent);
@@ -386,8 +386,8 @@ XmlRpcResponse.prototype.unmarshal = function(node, parent) {
 
 	} else {
 		var children = parent;
-		for ( var i = 0; i < node.getElements().length; i++) {
-			children = this.unmarshal(node.getElements()[i], children);
+		for ( var i = 0; i < node.getChildren().length; i++) {
+			children = this.unmarshal(node.getChildren()[i], children);
 		}
 		parent = children;
 	}
